@@ -84,5 +84,70 @@ for (let i = 0; i < accordionBtn.length; i++) {
     this.classList.toggle('active');
 
   });
+  /* ================================
+   ADD TO CART → send to backend
+   ================================ */
+(function () {
+  const BACKEND = (window.BACKEND_URL || "").replace(/\/+$/, "");
+
+  function findProductInfo(btn) {
+    const card =
+      btn.closest(".showcase") ||
+      btn.closest(".product") ||
+      btn.closest(".card") ||
+      btn.parentElement;
+    const titleEl = card.querySelector(".showcase-title, h3, h4, .title");
+    const priceEl = card.querySelector(".price, .product-price");
+    const imgEl = card.querySelector("img");
+    const title = titleEl ? titleEl.textContent.trim() : "Unknown";
+    const priceRaw = priceEl ? priceEl.textContent.replace(/[^0-9.]/g, "") : "0";
+    const price = parseFloat(priceRaw) || 0;
+    const img = imgEl ? imgEl.getAttribute("src") || "" : "";
+    return { title, price, img };
+  }
+
+  async function sendToBackend(prod) {
+    try {
+      const res = await fetch(`${BACKEND}/api/cart`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(prod),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        console.log("✅ Added to cart:", data.item);
+      } else {
+        console.error("❌ Server error:", data);
+      }
+    } catch (err) {
+      console.error("❌ Network error:", err);
+    }
+  }
+
+  function attachCartButtons() {
+    const buttons = document.querySelectorAll(
+      ".add-cart-btn, .add-to-cart, .addCart"
+    );
+    buttons.forEach((btn) => {
+      btn.addEventListener("click", async (e) => {
+        e.preventDefault();
+        const orig = btn.textContent;
+        btn.disabled = true;
+        btn.textContent = "Adding...";
+        const product = findProductInfo(btn);
+        await sendToBackend(product);
+        btn.textContent = "Added ✓";
+        setTimeout(() => {
+          btn.disabled = false;
+          btn.textContent = orig;
+        }, 1500);
+      });
+    });
+  }
+
+  if (document.readyState === "loading")
+    document.addEventListener("DOMContentLoaded", attachCartButtons);
+  else attachCartButtons();
+})();
 
 }
